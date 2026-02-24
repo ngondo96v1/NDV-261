@@ -12,28 +12,33 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://ngondo96:119011Ngon@ndv261.n9yuhgn.mongodb.net/ndv261?retryWrites=true&w=majority";
 
+let lastDbError: string | null = null;
+
 async function connectDB() {
   console.log("Attempting to connect to MongoDB...");
+  lastDbError = null;
   try {
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s
+      serverSelectionTimeoutMS: 5000,
     });
     console.log("Connected to MongoDB successfully");
     
-    // Initialize system settings if they don't exist
     const settings = await SystemSettingsModel.findOne();
     if (!settings) {
       await SystemSettingsModel.create({ budget: 30000000, rankProfit: 0 });
       console.log("Initialized system settings");
     }
-  } catch (err) {
+  } catch (err: any) {
+    lastDbError = err.message || String(err);
     console.error("MongoDB connection error details:", err);
   }
 }
 
 async function startServer() {
-  // Start connection in background
-  connectDB().catch(err => console.error("Background DB connection error:", err));
+  connectDB().catch(err => {
+    lastDbError = err.message || String(err);
+    console.error("Background DB connection error:", err);
+  });
   
   const app = express();
   const PORT = 3000;
@@ -56,6 +61,7 @@ async function startServer() {
       status: "OK", 
       database: states[dbState] || "Unknown",
       dbCode: dbState,
+      error: dbState !== 1 ? lastDbError : null,
       env: process.env.NODE_ENV || 'development'
     });
   });
