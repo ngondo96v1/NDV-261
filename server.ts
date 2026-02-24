@@ -15,7 +15,8 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://ngondo96:119011Ngo
 let lastDbError: string | null = null;
 
 async function connectDB() {
-  console.log("Attempting to connect to MongoDB...");
+  const maskedUri = MONGODB_URI.replace(/\/\/.*@/, "//****:****@");
+  console.log(`Attempting to connect to MongoDB with URI: ${maskedUri}`);
   lastDbError = null;
   try {
     await mongoose.connect(MONGODB_URI, {
@@ -29,7 +30,13 @@ async function connectDB() {
       console.log("Initialized system settings");
     }
   } catch (err: any) {
-    lastDbError = err.message || String(err);
+    let msg = err.message || String(err);
+    if (msg.includes("IP") || msg.includes("whitelist")) {
+      msg = "Lỗi IP: Hãy kiểm tra xem bạn đã thêm 0.0.0.0/0 vào Network Access trên MongoDB Atlas chưa.";
+    } else if (msg.includes("auth") || msg.includes("Authentication")) {
+      msg = "Lỗi xác thực: Sai Username hoặc Password trong chuỗi kết nối.";
+    }
+    lastDbError = msg;
     console.error("MongoDB connection error details:", err);
   }
 }
@@ -54,7 +61,7 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // Health check
-  app.get("/health", (req, res) => {
+  app.get("/api/health", (req, res) => {
     const dbState = mongoose.connection.readyState;
     const states = ["Disconnected", "Connected", "Connecting", "Disconnecting"];
     res.json({ 

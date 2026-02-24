@@ -35,21 +35,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, loans, registered
 
   const checkStatus = async () => {
     try {
-      const res = await fetch('/health');
+      const res = await fetch('/api/health');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       if (data.database === 'Connected') {
         setDbStatus('connected');
         setDbError(null);
       } else if (data.database === 'Connecting') {
         setDbStatus('connecting');
-        setDbError(data.error || null);
+        setDbError(data.error || 'Đang kết nối tới cơ sở dữ liệu...');
       } else {
         setDbStatus('disconnected');
-        setDbError(data.error || null);
+        setDbError(data.error || 'Cơ sở dữ liệu chưa được kết nối');
       }
-    } catch (e) {
+    } catch (e: any) {
       setDbStatus('disconnected');
-      setDbError('Không thể kết nối tới server API');
+      setDbError(`Lỗi kết nối API: ${e.message || 'Không xác định'}`);
     }
   };
 
