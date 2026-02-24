@@ -126,6 +126,7 @@ export interface ILogModel extends Document {
 }
 
 const LogSchema: Schema = new Schema({
+  id: { type: String },
   user: { type: String, required: true },
   time: { type: String, required: true },
   action: { type: String, required: true },

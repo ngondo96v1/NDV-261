@@ -46,7 +46,12 @@ async function startServer() {
 
   // Health check
   app.get("/health", (req, res) => {
-    res.send("OK");
+    const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+    res.json({ 
+      status: "OK", 
+      database: dbStatus,
+      env: process.env.NODE_ENV || 'development'
+    });
   });
 
   // API Routes
@@ -186,7 +191,7 @@ async function startServer() {
   app.get("/api/logs", async (req, res) => {
     try {
       const logs = await LogModel.find().sort({ time: -1 }).limit(100).lean();
-      res.json(logs);
+      res.json(logs.map((l: any) => ({ ...l, id: l.id || l._id.toString() })));
     } catch (e) {
       res.status(500).json({ error: "Internal Server Error" });
     }
@@ -194,9 +199,11 @@ async function startServer() {
 
   app.post("/api/logs", async (req, res) => {
     try {
+      console.log("Ghi log:", req.body.action, "bởi", req.body.user);
       await LogModel.create(req.body);
       res.json({ success: true });
     } catch (e) {
+      console.error("Lỗi khi ghi log vào DB:", e);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });

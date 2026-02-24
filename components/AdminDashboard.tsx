@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, LoanRecord } from '../types';
 import { 
   Activity, 
@@ -14,7 +14,8 @@ import {
   ShieldAlert,
   RotateCcw,
   X,
-  Check
+  Check,
+  Database
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -29,6 +30,22 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, loans, registeredUsersCount, systemBudget, rankProfit, onResetRankProfit, onLogout }) => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        setDbStatus(data.database === 'Connected' ? 'connected' : 'disconnected');
+      } catch (e) {
+        setDbStatus('disconnected');
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
   
   const settledLoans = loans.filter(l => l.status === 'ĐÃ TẤT TOÁN');
   const pendingLoans = loans.filter(l => l.status === 'CHỜ DUYỆT' || l.status === 'CHỜ TẤT TOÁN');
@@ -71,9 +88,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, loans, registered
           </div>
           <div>
             <h2 className="text-xl font-black text-white tracking-tighter uppercase leading-none">NDV Money Admin</h2>
-            <div className="flex items-center gap-1.5 mt-1">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Hệ thống trực tuyến</span>
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Hệ thống trực tuyến</span>
+              </div>
+              <div className="w-[1px] h-2 bg-white/10"></div>
+              <div className="flex items-center gap-1.5">
+                <Database size={8} className={dbStatus === 'connected' ? 'text-blue-500' : 'text-red-500'} />
+                <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${dbStatus === 'connected' ? 'text-blue-500/70' : 'text-red-500/70'}`}>
+                  {dbStatus === 'connected' ? 'MongoDB: OK' : 'MongoDB: Lỗi'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
