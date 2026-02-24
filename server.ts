@@ -10,17 +10,23 @@ import { UserModel, LoanModel, NotificationModel, SystemSettingsModel, LogModel 
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://ngondo96:119011Ngon@ndv261.n9yuhgn.mongodb.net/ndv261?retryWrites=true&w=majority";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://ngondo96:119011@ndv261.n9yuhgn.mongodb.net/ndv261?retryWrites=true&w=majority&appName=NDV261";
 
 let lastDbError: string | null = null;
 
 async function connectDB() {
-  const maskedUri = MONGODB_URI.replace(/\/\/.*@/, "//****:****@");
-  console.log(`Attempting to connect to MongoDB with URI: ${maskedUri}`);
+  const uriToUse = process.env.MONGODB_URI || MONGODB_URI;
+  const isEnvSet = !!process.env.MONGODB_URI;
+  const maskedUri = uriToUse.replace(/\/\/.*@/, "//****:****@");
+  
+  console.log(`[DB Diagnostic] Using URI: ${maskedUri}`);
+  console.log(`[DB Diagnostic] URI from process.env: ${isEnvSet ? "YES" : "NO (Using fallback)"}`);
+  
   lastDbError = null;
   try {
-    await mongoose.connect(MONGODB_URI, {
+    await mongoose.connect(uriToUse, {
       serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
     });
     console.log("Connected to MongoDB successfully");
     
@@ -31,13 +37,17 @@ async function connectDB() {
     }
   } catch (err: any) {
     let msg = err.message || String(err);
-    if (msg.includes("IP") || msg.includes("whitelist")) {
-      msg = "Lỗi IP: Hãy kiểm tra xem bạn đã thêm 0.0.0.0/0 vào Network Access trên MongoDB Atlas chưa.";
-    } else if (msg.includes("auth") || msg.includes("Authentication")) {
-      msg = "Lỗi xác thực: Sai Username hoặc Password trong chuỗi kết nối.";
-    }
-    lastDbError = msg;
     console.error("MongoDB connection error details:", err);
+    
+    if (msg.includes("IP") || msg.includes("whitelist") || msg.includes("ETIMEDOUT")) {
+      msg = "Lỗi IP hoặc Timeout: Hãy kiểm tra Network Access (0.0.0.0/0) trên MongoDB Atlas.";
+    } else if (msg.includes("auth") || msg.includes("Authentication") || msg.includes("bad auth")) {
+      msg = "Lỗi xác thực: Sai Username hoặc Password. Hãy kiểm tra lại Database User trên Atlas.";
+    } else if (msg.includes("DNS") || msg.includes("ENOTFOUND")) {
+      msg = "Lỗi DNS: Không tìm thấy host. Hãy kiểm tra lại chuỗi kết nối.";
+    }
+    
+    lastDbError = msg;
   }
 }
 
