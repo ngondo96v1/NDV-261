@@ -286,34 +286,19 @@ const App: React.FC = () => {
       localStorage.setItem('vnv_user', user ? JSON.stringify(user) : '');
       
       try {
-        await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(registeredUsers)
-        });
+        const headers = { 'Content-Type': 'application/json' };
+        const results = await Promise.allSettled([
+          fetch('/api/users', { method: 'POST', headers, body: JSON.stringify(registeredUsers) }),
+          fetch('/api/loans', { method: 'POST', headers, body: JSON.stringify(loans) }),
+          fetch('/api/notifications', { method: 'POST', headers, body: JSON.stringify(notifications) }),
+          fetch('/api/budget', { method: 'POST', headers, body: JSON.stringify({ budget: systemBudget }) }),
+          fetch('/api/rankProfit', { method: 'POST', headers, body: JSON.stringify({ rankProfit }) })
+        ]);
         
-        await fetch('/api/loans', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(loans)
-        });
-        
-        await fetch('/api/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(notifications)
-        });
-        
-        await fetch('/api/budget', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ budget: systemBudget })
-        });
-        
-        await fetch('/api/rankProfit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rankProfit })
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(`Lỗi khi lưu mục ${index}:`, result.reason);
+          }
         });
       } catch (e) {
         console.error("Lỗi khi lưu dữ liệu lên server:", e);

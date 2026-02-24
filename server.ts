@@ -10,12 +10,15 @@ import { UserModel, LoanModel, NotificationModel, SystemSettingsModel, LogModel 
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/ndv-money";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://ngondo96:119011Ngon@ndv261.n9yuhgn.mongodb.net/ndv261?retryWrites=true&w=majority";
 
 async function connectDB() {
+  console.log("Attempting to connect to MongoDB...");
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log("Connected to MongoDB");
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s
+    });
+    console.log("Connected to MongoDB successfully");
     
     // Initialize system settings if they don't exist
     const settings = await SystemSettingsModel.findOne();
@@ -24,12 +27,13 @@ async function connectDB() {
       console.log("Initialized system settings");
     }
   } catch (err) {
-    console.error("MongoDB connection error:", err);
+    console.error("MongoDB connection error details:", err);
   }
 }
 
 async function startServer() {
-  await connectDB();
+  // Start connection in background
+  connectDB().catch(err => console.error("Background DB connection error:", err));
   
   const app = express();
   const PORT = 3000;
@@ -46,10 +50,12 @@ async function startServer() {
 
   // Health check
   app.get("/health", (req, res) => {
-    const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+    const dbState = mongoose.connection.readyState;
+    const states = ["Disconnected", "Connected", "Connecting", "Disconnecting"];
     res.json({ 
       status: "OK", 
-      database: dbStatus,
+      database: states[dbState] || "Unknown",
+      dbCode: dbState,
       env: process.env.NODE_ENV || 'development'
     });
   });

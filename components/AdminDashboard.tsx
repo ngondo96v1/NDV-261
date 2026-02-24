@@ -30,20 +30,23 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, loans, registeredUsersCount, systemBudget, rankProfit, onResetRankProfit, onLogout }) => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected' | 'connecting'>('checking');
+
+  const checkStatus = async () => {
+    try {
+      const res = await fetch('/health');
+      const data = await res.json();
+      if (data.database === 'Connected') setDbStatus('connected');
+      else if (data.database === 'Connecting') setDbStatus('connecting');
+      else setDbStatus('disconnected');
+    } catch (e) {
+      setDbStatus('disconnected');
+    }
+  };
 
   useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const res = await fetch('/health');
-        const data = await res.json();
-        setDbStatus(data.database === 'Connected' ? 'connected' : 'disconnected');
-      } catch (e) {
-        setDbStatus('disconnected');
-      }
-    };
     checkStatus();
-    const interval = setInterval(checkStatus, 30000);
+    const interval = setInterval(checkStatus, 10000);
     return () => clearInterval(interval);
   }, []);
   
@@ -95,10 +98,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, loans, registered
               </div>
               <div className="w-[1px] h-2 bg-white/10"></div>
               <div className="flex items-center gap-1.5">
-                <Database size={8} className={dbStatus === 'connected' ? 'text-blue-500' : 'text-red-500'} />
-                <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${dbStatus === 'connected' ? 'text-blue-500/70' : 'text-red-500/70'}`}>
-                  {dbStatus === 'connected' ? 'MongoDB: OK' : 'MongoDB: Lỗi'}
+                <Database size={8} className={dbStatus === 'connected' ? 'text-blue-500' : dbStatus === 'connecting' ? 'text-yellow-500 animate-pulse' : 'text-red-500'} />
+                <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${dbStatus === 'connected' ? 'text-blue-500/70' : dbStatus === 'connecting' ? 'text-yellow-500/70' : 'text-red-500/70'}`}>
+                  {dbStatus === 'connected' ? 'MongoDB: OK' : dbStatus === 'connecting' ? 'MongoDB: Đang kết nối...' : 'MongoDB: Lỗi'}
                 </span>
+                {dbStatus === 'disconnected' && (
+                  <button onClick={() => { setDbStatus('checking'); checkStatus(); }} className="p-1 hover:bg-white/5 rounded">
+                    <RotateCcw size={8} className="text-gray-500" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
